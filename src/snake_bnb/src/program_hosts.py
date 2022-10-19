@@ -4,7 +4,7 @@ from dateutil import parser
 
 from infrastructure.switchlang import switch
 import infrastructure.state as state
-import services.data_service as svc
+import services.data_service as service
 
 
 def run():
@@ -15,7 +15,7 @@ def run():
 
     while True:
         action = get_action()
-
+        
         with switch(action) as s:
             s.case('c', create_account)
             s.case('a', create_account)
@@ -57,12 +57,12 @@ def create_account():
     name = input('What is your name? ')
     email = input('What is your email? ').strip().lower()
 
-    old_account = svc.find_account_by_email(email)
+    old_account = service.find_account_by_email(email)
     if old_account:
         error_msg(f"ERROR: Account with email {email} already exists.")
         return
 
-    state.active_account = svc.create_account(name, email)
+    state.active_account = service.create_account(name, email)
     success_msg(f"Created new account with id {state.active_account.id}.")
 
 
@@ -70,7 +70,7 @@ def log_into_account():
     print(' ****************** LOGIN **************** ')
 
     email = input('What is your email? ').strip().lower()
-    account = svc.find_account_by_email(email)
+    account = service.find_account_by_email(email)
 
     if not account:
         error_msg(f'Could not find account with email {email}.')
@@ -99,7 +99,7 @@ def register_cage():
     name = input("Give your cage a name: ")
     price = float(input("How much are you charging?  "))
 
-    cage = svc.register_cage(
+    cage = service.register_cage(
         state.active_account, name,
         allow_dangerous, has_toys, carpeted, meters, price
     )
@@ -116,7 +116,7 @@ def list_cages(suppress_header=False):
         error_msg('You must login first to register a cage.')
         return
 
-    cages = svc.find_cages_for_user(state.active_account)
+    cages = service.find_cages_for_user(state.active_account)
     print(f"You have {len(cages)} cages.")
     for idx, c in enumerate(cages):
         print(f' {idx + 1}. {c.name} is {c.square_meters} meters.')
@@ -145,7 +145,7 @@ def update_availability():
 
     cage_number = int(cage_number)
 
-    cages = svc.find_cages_for_user(state.active_account)
+    cages = service.find_cages_for_user(state.active_account)
     selected_cage = cages[cage_number - 1]
 
     success_msg("Selected cage {}".format(selected_cage.name))
@@ -155,7 +155,7 @@ def update_availability():
     )
     days = int(input("How many days is this block of time? "))
 
-    svc.add_available_date(
+    service.add_available_date(
         selected_cage,
         start_date,
         days
@@ -171,7 +171,7 @@ def view_bookings():
         error_msg("You must log in first to register a cage")
         return
 
-    cages = svc.find_cages_for_user(state.active_account)
+    cages = service.find_cages_for_user(state.active_account)
 
     bookings = [
         (c, b)

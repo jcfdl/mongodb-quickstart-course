@@ -9,6 +9,7 @@ from data.cages import Cage
 from data.owners import Owner
 from data.snakes import Snake
 
+from mongoengine.queryset.visitor import Q
 
 def create_account(name: str, email: str) -> Owner:
     owner = Owner()
@@ -94,22 +95,14 @@ def get_available_cages(checkin: datetime.datetime,
 
     query = Cage.objects() \
         .filter(square_meters__gte=min_size) \
-        .filter(bookings__check_in_date__lte=checkin) \
-        .filter(bookings__check_out_date__gte=checkout)
+        .filter(Q(bookings__check_in_date__lte=checkin) and Q(bookings__check_out_date__gte=checkout))
 
     if snake.is_venomous:
         query = query.filter(allow_dangerous_snakes=True)
 
     cages = query.order_by('price', '-square_meters')
-
-    final_cages = []
-    for c in cages:
-        for b in c.bookings:
-            if b.check_in_date <= checkin and b.check_out_date >= checkout and b.guest_snake_id is None:
-                final_cages.append(c)
-
-    return final_cages
-
+    
+    return cages
 
 def book_cage(account, snake, cage, checkin, checkout):
     booking: Optional[Booking] = None
@@ -135,15 +128,15 @@ def get_bookings_for_user(email: str) -> List[Booking]:
         .filter(bookings__guest_owner_id=account.id) \
         .only('bookings', 'name')
 
-    def map_cage_to_booking(cage, booking):
-        booking.cage = cage
-        return booking
-
     bookings = [
-        map_cage_to_booking(cage, booking)
+        map_cage_to_booking(cage, booking)   
         for cage in booked_cages
         for booking in cage.bookings
         if booking.guest_owner_id == account.id
-    ]
+    ]   
 
     return bookings
+
+def map_cage_to_booking(cage, booking):
+    booking.cage = cage
+    return booking
